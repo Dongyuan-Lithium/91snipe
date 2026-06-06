@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CR Live · who just played</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">
+      👑 CR&nbsp;Live
+      <span class="sub">top-200 players who just finished a match · 刚刚打完的顶尖玩家</span>
+    </div>
+    <div class="controls">
+      <span id="live" class="live">live</span>
+      <div class="windows" role="group" aria-label="time window">
+        <button data-window="5">5 min</button>
+        <button data-window="10">10 min</button>
+      </div>
+      <span class="count-wrap"><b id="count">0</b> active</span>
+    </div>
+  </header>
+
+  <div id="mock" class="mockbar" hidden>
+    Showing <b>MOCK</b> data. Set <code>CR_API_TOKEN</code> in <code>.env</code> for live data — see README.
+  </div>
+
+  <main id="grid" class="grid" aria-live="polite"></main>
+
+  <footer>
+    Click a player → their <b>RoyaleAPI</b> battle history. 🔴 = just played, likely matching / in their next game now.
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>
