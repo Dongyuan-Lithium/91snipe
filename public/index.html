@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header>
@@ -33,7 +33,10 @@
     </div>
     <div class="toolbar-right">
       <label class="sel"><span data-i18n="monitorLabel">Monitor top</span>
-        <input id="topN" class="topn-input" type="number" min="1" max="1000" step="1" value="200" inputmode="numeric" />
+        <span class="scrub" title="Drag ⇆ to adjust — or click to type">
+          <input id="topN" class="topn-input" type="number" min="1" max="1000" step="1" value="200" inputmode="numeric" aria-label="Monitor top N ranks — drag to adjust" />
+          <span class="scrub-grip" aria-hidden="true">⇆</span>
+        </span>
         <span class="sel-suffix" data-i18n="monitorSuffix"></span>
       </label>
       <label class="sel"><span data-i18n="sortLabel">Sort</span>
@@ -77,6 +80,7 @@
     </span>
   </footer>
 
-  <script src="/app.js"></script>
+  <script src="demo.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

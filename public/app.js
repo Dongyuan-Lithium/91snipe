@@ -22,6 +22,7 @@ const I18N = {
       ' minutes yet — this updates the instant one does.',
     emptyFiltered: 'No players match your filters.',
     mockNote: 'Showing MOCK data. Set CR_API_TOKEN in .env for live data — see README.',
+    demoNote: 'Live demo — simulated data. Run it locally with a Supercell API token to track real top-ranked players (see README).',
     footer: 'Click any row for the deck from their last ranked game. 🔴 = just played, likely in their next game now.',
     legendEvo: 'evolution', legendEvo2: 'hero', legendChamp: 'champion',
     soundOn: 'Snipe alerts ON — ping when a tracked player just played',
@@ -52,6 +53,7 @@ const I18N = {
     emptyNoOne: (w) => '过去 ' + w + ' 分钟内还没有前200名玩家打完排位赛——一旦有人打完会立即更新。',
     emptyFiltered: '没有符合筛选条件的玩家。',
     mockNote: '当前显示的是模拟数据。在 .env 中设置 CR_API_TOKEN 即可获取实时数据——详见 README。',
+    demoNote: '在线演示——模拟数据。在本地配置 Supercell API 令牌即可追踪真实的顶尖排位玩家（详见 README）。',
     footer: '点击任意一行查看该玩家最近一场排位赛的卡组。🔴 = 刚刚打完，可能正在下一场对战中。',
     legendEvo: '进化', legendEvo2: '英雄', legendChamp: '冠军卡',
     soundOn: '上分提醒已开启——追踪的玩家刚打完时会提示',
@@ -64,6 +66,9 @@ const I18N = {
 };
 
 // ============================ state ============================
+// Same-origin by default. Set `window.SNIPE_API_BASE = 'https://your-host'` (e.g.
+// in index.html) to point a static front-end at a backend hosted elsewhere.
+const API_BASE = (typeof window !== 'undefined' && window.SNIPE_API_BASE) || '';
 const LS = {
   get: (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } },
   set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
@@ -71,8 +76,9 @@ const LS = {
 const state = {
   window: Number(LS.get('window', 5)) || 5,
   mock: false,
+  static: false,        // true when no backend is reachable -> in-browser demo (e.g. GitHub Pages)
   players: [],
-  es: null,
+  source: null,         // active data source: real SSE or the demo engine (both expose .close())
   lang: LS.get('lang', 'zh') === 'en' ? 'en' : 'zh', // default Chinese unless the user chose English
   query: '',
   matchingOnly: LS.get('matchingOnly', '0') === '1',
@@ -85,8 +91,50 @@ const state = {
 };
 const t = () => I18N[state.lang];
 const MATCH_SECS = 120;
+const TOPN_MIN = 1, TOPN_MAX = 1000;
 
 // ============================ helpers ============================
+// Turn a numeric <input> into a draggable "scrubber": drag left/right to change
+// the value (Figma/Blender style), or click to type. Hold Shift to move in 10s.
+function makeScrubbable(input, { min, max, onChange, sensitivity = 4 }) {
+  let dragging = false, moved = false, startX = 0, startVal = 0, pid = null;
+  const clamp = (v) => Math.max(min, Math.min(max, v));
+
+  input.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    // Begin a *potential* scrub but don't steal focus yet — a plain click should
+    // still place the caret so the user can type a number.
+    pid = e.pointerId; dragging = true; moved = false;
+    startX = e.clientX; startVal = clamp(parseInt(input.value, 10) || min);
+    try { input.setPointerCapture(pid); } catch {}
+  });
+  input.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    if (!moved && Math.abs(dx) < 3) return;          // tiny movement = still a click
+    if (!moved) {
+      moved = true;
+      input.classList.add('dragging');
+      document.body.classList.add('scrubbing');
+      if (document.activeElement === input) input.blur(); // no caret/keyboard while scrubbing
+    }
+    const step = e.shiftKey ? 10 : 1;
+    const next = clamp(startVal + Math.round(dx / sensitivity) * step);
+    if (String(next) !== input.value) { input.value = String(next); onChange(); }
+    e.preventDefault();
+  });
+  const end = () => {
+    if (!dragging) return;
+    dragging = false;
+    try { input.releasePointerCapture(pid); } catch {}
+    input.classList.remove('dragging');
+    document.body.classList.remove('scrubbing');
+    if (!moved) { input.focus(); input.select(); } // it was a click -> let them type
+    moved = false;
+  };
+  input.addEventListener('pointerup', end);
+  input.addEventListener('pointercancel', end);
+}
 function fmtAgo(sec) {
   const L = t();
   if (sec < 5) return L.justNow;
@@ -320,23 +368,36 @@ function applyStaticI18n() {
   document.getElementById('refresh').title = L.refresh;
 }
 
-// ============================ SSE ============================
+// ============================ data source (live SSE or in-browser demo) ============================
+function closeSource() {
+  if (state.source && state.source.close) { try { state.source.close(); } catch {} }
+  state.source = null;
+}
+
+// Apply one frame of players (from either source) to the UI.
+function onFrame(players) {
+  state.players = players || [];
+  const live = new Set(state.players.map((p) => p.tag));
+  for (const tag of state.expanded) if (!live.has(tag)) state.expanded.delete(tag);
+  document.getElementById('live').classList.add('on');
+  maybeAlert();
+  render();
+}
+
 function connect() {
-  if (state.es) state.es.close();
+  closeSource();
   state.primed = false; state.prevMatching = new Set();
-  state.es = new EventSource('/api/stream?window=' + state.window);
-  state.es.onmessage = (e) => {
-    try {
-      const d = JSON.parse(e.data);
-      state.players = d.players || [];
-      const live = new Set(state.players.map((p) => p.tag));
-      for (const tag of state.expanded) if (!live.has(tag)) state.expanded.delete(tag);
-      document.getElementById('live').classList.add('on');
-      maybeAlert();
-      render();
-    } catch { /* ignore malformed frame */ }
+  if (state.static) {
+    // No backend: drive the UI from the in-browser demo engine (demo.js).
+    state.source = window.SnipeDemo.start({ window: state.window, onData: onFrame });
+    return;
+  }
+  const es = new EventSource(API_BASE + '/api/stream?window=' + state.window);
+  es.onmessage = (e) => {
+    try { onFrame(JSON.parse(e.data).players || []); } catch { /* ignore malformed frame */ }
   };
-  state.es.onerror = () => document.getElementById('live').classList.remove('on');
+  es.onerror = () => document.getElementById('live').classList.remove('on');
+  state.source = { close: () => es.close() };
 }
 
 // ============================ wiring ============================
@@ -374,19 +435,20 @@ function wireUi() {
   mo.checked = state.matchingOnly;
   mo.addEventListener('change', () => { state.matchingOnly = mo.checked; LS.set('matchingOnly', mo.checked ? '1' : '0'); render(); });
 
-  // manual "monitor top N" control (1..200, default 200)
+  // "monitor top N" — type a number OR drag the field left/right to scrub it (1..1000)
   const topN = document.getElementById('topN');
   topN.value = String(state.topN);
-  const applyTopN = () => {
+  const commitTopN = () => {
     const v = parseInt(topN.value, 10);
     if (!Number.isFinite(v)) return;                 // ignore an empty field mid-typing
-    state.topN = Math.max(1, Math.min(1000, v));
+    state.topN = Math.max(TOPN_MIN, Math.min(TOPN_MAX, v));
     LS.set('topN', String(state.topN));
     state.prevMatching = new Set();
     render();
   };
-  topN.addEventListener('input', applyTopN);
-  topN.addEventListener('change', () => { applyTopN(); topN.value = String(state.topN); }); // normalize on blur
+  topN.addEventListener('input', commitTopN);
+  topN.addEventListener('change', () => { commitTopN(); topN.value = String(state.topN); }); // normalize on blur
+  makeScrubbable(topN, { min: TOPN_MIN, max: TOPN_MAX, onChange: commitTopN });
 
   const sort = document.getElementById('sort');
   sort.value = state.sort;
@@ -425,11 +487,27 @@ function wireUi() {
 }
 
 async function init() {
-  const meta = await fetch('/api/meta').then((r) => r.json()).catch(() => ({}));
-  // server default only wins if the user hasn't picked a window before
-  if (LS.get('window', null) === null) state.window = meta.defaultWindow || 5;
-  state.mock = !!meta.mock;
-  if (state.mock) document.getElementById('mock').hidden = false;
+  // Probe for a backend. If none answers (e.g. served statically from GitHub
+  // Pages), fall back to the self-contained in-browser demo (demo.js).
+  let meta = null;
+  try {
+    const r = await fetch(API_BASE + '/api/meta', { cache: 'no-store' });
+    if (r.ok) meta = await r.json();
+  } catch { /* no backend reachable */ }
+
+  if (meta) {
+    // server default only wins if the user hasn't picked a window before
+    if (LS.get('window', null) === null) state.window = meta.defaultWindow || 5;
+    state.mock = !!meta.mock;
+  } else {
+    state.static = true; state.mock = true;
+  }
+
+  if (state.mock) {
+    const banner = document.getElementById('mock');
+    if (state.static) { const s = banner.querySelector('[data-i18n]'); if (s) s.dataset.i18n = 'demoNote'; }
+    banner.hidden = false;
+  }
   applyStaticI18n();
   wireUi();
   connect();

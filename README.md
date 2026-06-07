@@ -22,11 +22,31 @@ you might run into in the next few minutes.
 - **Copy deck / open in game** — one click copies the official `link.clashroyale.com` deck
   link or opens it straight in the game.
 - **Crown score, opponent, Elo & clan** for each player's last game.
-- **Filters & sort** — search by name / clan / tag, "matching only", Top-N rank filter, and
-  sort by recency or rank.
+- **Filters & sort** — search by name / clan / tag, "matching only", a Top-N rank filter you
+  **drag to scrub** (or click to type), and sort by recency or rank.
 - **Snipe alerts** — optional sound + desktop notification the moment a tracked player (within
   your rank filter) just played.
 - **Bilingual** — English / 中文 toggle; all preferences persist locally.
+
+## Live demo (host it on GitHub Pages)
+
+The front-end runs standalone: when no backend answers, the page falls back to an in-browser
+**simulated-data demo** (`public/demo.js`) that streams mock finished matches — so the same
+`public/` folder publishes as a static site with **zero server**.
+
+A workflow (`.github/workflows/deploy.yml`) deploys `public/` on every push to `master`. To
+turn it on:
+
+1. Push this repo to GitHub.
+2. **Settings → Pages → Build and deployment → Source: GitHub Actions.**
+3. The next push publishes to `https://<user>.github.io/<repo>/` — for this repo,
+   `https://dongyuan-lithium.github.io/91snipe/`.
+
+> The hosted page is a demo on simulated data **by design**: a browser can't hold a Supercell
+> API token or be IP-whitelisted, and GitHub Pages can't run the Node poller. For **real** live
+> data, run it locally (below). If you self-host the backend somewhere with a stable, whitelisted
+> IP, point the static page at it with `window.SNIPE_API_BASE = 'https://your-host'` in
+> `index.html`.
 
 ## Run it (zero install)
 
