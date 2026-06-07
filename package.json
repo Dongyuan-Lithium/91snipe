@@ -1,7 +1,7 @@
 {
-  "name": "clash-royale-live-tracker",
-  "version": "1.0.0",
-  "description": "Real-time tracker of top-200 Clash Royale players who just finished a match, with their last deck and a one-click jump to their RoyaleAPI history. RoyaleAPI-inspired, auto-refreshing, dependency-free.",
+  "name": "91snipe",
+  "version": "2.0.0",
+  "description": "91Snipe — real-time tracker of the top-200 ranked Clash Royale players who just finished a match, with their full deck (correct levels, evolutions, champions, tower troop), copy-deck links, crown scores and snipe alerts. RoyaleAPI-inspired, bilingual (EN/中文), auto-refreshing, dependency-free.",
   "type": "module",
   "main": "src/server.js",
   "scripts": {

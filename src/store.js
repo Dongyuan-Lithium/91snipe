@@ -25,20 +25,30 @@ export function recent(windowMin = 5) {
     const t = p.lastBattleTime instanceof Date ? p.lastBattleTime.getTime() : new Date(p.lastBattleTime).getTime();
     if (isNaN(t) || t < cutoff) continue;
     const secondsAgo = Math.max(0, Math.round((now - t) / 1000));
+    const clean = String(p.tag).replace('#', '');
     out.push({
       tag: p.tag,
-      cleanTag: String(p.tag).replace('#', ''),
+      cleanTag: clean,
       name: p.name,
       rank: p.rank ?? null,
+      trophies: p.trophies ?? null,
+      expLevel: p.expLevel ?? null,
+      clanName: p.clanName ?? null,
       deck: p.deck || [],
+      towerTroop: p.towerTroop ?? null,
+      deckLink: p.deckLink ?? null,
       mode: p.mode || null,
+      crowns: p.crowns ?? null,
+      oppCrowns: p.oppCrowns ?? null,
       win: p.win ?? null,
+      opponentName: p.opponentName ?? null,
+      opponentTag: p.opponentTag ?? null,
       lastBattleTime: new Date(t).toISOString(),
       secondsAgo,
       // Just finished and hasn't surfaced a newer battle yet -> very likely
       // queuing or already in their next game. Best inference the API allows.
       status: secondsAgo < 120 ? 'matching' : 'recent',
-      royaleApiUrl: `https://royaleapi.com/player/${String(p.tag).replace('#', '')}`,
+      royaleApiUrl: `https://royaleapi.com/player/${clean}`,
     });
   }
   out.sort((a, b) => a.secondsAgo - b.secondsAgo);

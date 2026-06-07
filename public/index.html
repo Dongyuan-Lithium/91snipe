@@ -3,33 +3,78 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CR Live · who just played</title>
+  <title>91Snipe · who just played</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23ff4d5e'/%3E%3Ccircle cx='16' cy='16' r='10.5' fill='%230e1726'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23ff4d5e'/%3E%3Ccircle cx='16' cy='16' r='2.3' fill='%23fff'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
   <header>
     <div class="brand">
-      👑 CR&nbsp;Live
-      <span class="sub">top-200 players who just finished a match · 刚刚打完的顶尖玩家</span>
+      <span class="logo">🎯</span>
+      <span class="brand-text">91Snipe<span class="sub" data-i18n="tagline">top-200 ranked players who just finished a match</span></span>
     </div>
     <div class="controls">
-      <span id="live" class="live">live</span>
-      <div class="windows" role="group" aria-label="time window">
-        <button data-window="5">5 min</button>
-        <button data-window="10">10 min</button>
-      </div>
-      <span class="count-wrap"><b id="count">0</b> active</span>
+      <span id="live" class="live" data-i18n="live">live</span>
+      <button id="sound" class="iconbtn" type="button" title="Snipe alerts" aria-pressed="false">🔕</button>
+      <button id="lang" class="lang" type="button" title="Language / 语言">中文</button>
     </div>
   </header>
 
-  <div id="mock" class="mockbar" hidden>
-    Showing <b>MOCK</b> data. Set <code>CR_API_TOKEN</code> in <code>.env</code> for live data — see README.
+  <div class="toolbar">
+    <div class="filters">
+      <input id="search" class="search" type="search" autocomplete="off" data-i18n-ph="searchPlaceholder" placeholder="Filter by name, clan or tag…" />
+      <label class="toggle">
+        <input id="matchingOnly" type="checkbox" />
+        <span data-i18n="matchingOnly">Matching only</span>
+      </label>
+    </div>
+    <div class="toolbar-right">
+      <label class="sel"><span data-i18n="monitorLabel">Monitor top</span>
+        <input id="topN" class="topn-input" type="number" min="1" max="1000" step="1" value="200" inputmode="numeric" />
+        <span class="sel-suffix" data-i18n="monitorSuffix"></span>
+      </label>
+      <label class="sel"><span data-i18n="sortLabel">Sort</span>
+        <select id="sort">
+          <option value="recent" data-i18n-opt="sortRecent">Most recent</option>
+          <option value="rank" data-i18n-opt="sortRank">Highest rank</option>
+        </select>
+      </label>
+      <div class="windows" role="group" aria-label="time window">
+        <button data-window="5"></button>
+        <button data-window="10"></button>
+      </div>
+      <span class="count-wrap"><b id="count">0</b> <span data-i18n="active">active</span></span>
+    </div>
   </div>
 
-  <main id="grid" class="grid" aria-live="polite"></main>
+  <div id="mock" class="mockbar" hidden>
+    <span data-i18n="mockNote">Showing MOCK data. Set CR_API_TOKEN in .env for live data — see README.</span>
+  </div>
+
+  <div class="notice"><span class="notice-ico">ℹ️</span><span data-i18n-html="disclaimer"></span></div>
+
+  <div class="board">
+    <div class="list-head">
+      <span class="lh-rank">#</span>
+      <span class="lh-player" data-i18n="colPlayer">Player</span>
+      <span class="lh-trophies" data-i18n="colTrophies">Trophies</span>
+      <span class="lh-status" data-i18n="colStatus">Last game</span>
+      <span class="lh-result" data-i18n="colResult">Result</span>
+      <button id="refresh" class="iconbtn refresh-btn" type="button" title="Refresh">🔄</button>
+    </div>
+    <main id="grid" class="grid" aria-live="polite"></main>
+  </div>
 
   <footer>
-    Click a player → their <b>RoyaleAPI</b> battle history. 🔴 = just played, likely matching / in their next game now.
+    <span data-i18n="footer">Click a row to see the deck from their last ranked game. 🔴 = just played, likely in their next game now.</span>
+    <span class="legend">
+      <span class="lg lg-evo1" data-i18n="legendEvo">evolution Lv1</span>
+      <span class="lg lg-evo2" data-i18n="legendEvo2">evolution Lv2</span>
+      <span class="lg lg-champ" data-i18n="legendChamp">champion</span>
+    </span>
   </footer>
 
   <script src="/app.js"></script>
